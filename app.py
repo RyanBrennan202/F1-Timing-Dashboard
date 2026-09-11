@@ -22,6 +22,89 @@ def format_lap_time(time):
     except:
         return "No Time"
 
+def format_sector_time(time):
+    if time is None or str(time) == "NaT":
+        return "No Time"
+
+    try:
+        return f"{time.total_seconds():.3f}"
+    except:
+        return "No Time"
+
+def get_lap_event(row):
+    events = []
+
+    # Pit events
+    if str(row["PitInTime"]) != "NaT":
+        events.append("PIT IN")
+
+    if str(row["PitOutTime"]) != "NaT":
+        events.append("PIT OUT")
+    
+    # Track status events
+    track_status = str(row["TrackStatus"])
+
+    if "5" in track_status:
+        events.append("RED FLAG")
+    
+    if "4" in track_status:
+        events.append("SAFETY CAR")
+    
+    if "6" in track_status:
+        events.append("VSC")
+
+    if "7" in track_status:
+        events.append("VSC ENDING")
+    
+    if events:
+        return "  •  ".join(events)
+    
+    return ""
+
+def create_race_events(laps):
+    race_events = []
+
+    status_types = {
+        "4": "SAFETY CAR",
+        "5": "RED FLAG",
+        "6": "VSC"
+    }
+
+    for status_code, event_name in status_types.items():
+        event_laps = []
+
+        for lap_number in sorted(laps["LapNumber"].dropna().unique()):
+            lap_statuses = laps[
+                laps["LapNumber"] == lap_number
+            ]["TrackStatus"].astype(str)
+
+            if lap_statuses.str.contains(status_code).any():
+                event_laps.append(int(lap_number))
+
+        if not event_laps:
+            continue
+        
+        start_lap = event_laps[0]
+        previous_lap = event_laps[0]
+
+        for lap_number in event_laps[1:]:
+            if lap_number == previous_lap + 1:
+                previous_lap = lap_number
+            else:
+                race_events.append(
+                    (start_lap, previous_lap, event_name)
+                )
+
+                start_lap = lap_number
+                previous_lap = lap_number
+
+        race_events.append(
+            (start_lap, previous_lap, event_name)
+        )
+    
+    race_events.sort(key=lambda event: event[0])
+
+    return race_events
 
 def create_timing_table(laps, session):
     timing_table = (
@@ -278,6 +361,30 @@ if grand_prix is not None and session_type is not None:
                 hide_index=True
             )
 
+            # Race Events
+            st.subheader("Race Events")
+
+            race_events = create_race_events(laps)
+
+            events_per_row = 4
+
+            for i in range(0, len(race_events), events_per_row):
+                row_events = race_events[i:i + events_per_row]
+
+                columns = st.columns(events_per_row)
+
+                for column, event in zip (columns, row_events):
+                    start_lap, end_lap, event_name = event
+
+                    if start_lap == end_lap:
+                        lap_text = f"LAP {start_lap}"
+                    else:
+                        lap_text = f"LAPS {start_lap}-{end_lap}"
+                    
+                    with column:
+                        st.caption(lap_text)
+                        st.markdown(f"**{event_name}**")
+            
         elif session_type == "Qualifying":
             qualifying_results = create_qualifying_results(session)
 
@@ -300,7 +407,156 @@ if grand_prix is not None and session_type is not None:
     # -----------------------------
 
     with lap_tab:
-        st.info("Lap analysis coming next.")
+        st.subheader("Lap Analysis")
+
+        driver_names = dict(
+            zip(
+                session.results["Abbreviation"],
+                session.results["FullName"]
+            )
+        )
+
+        drivers = sorted(
+            laps["Driver"].dropna().unique()
+        )
+
+        selected_driver = st.selectbox(
+            "Driver",
+            drivers,
+            format_func=lambda x: driver_names.get(x, x),
+            key="lap_analysis_driver"
+        )
+
+        driver_laps = laps[
+            (laps["Driver"] == selected_driver)
+            & (laps["LapTime"].notna())
+        ].copy()
+
+        driver_laps["LapTimeSeconds"] = (
+            driver_laps["LapTime"].dt.total_seconds()
+        )
+
+        fig, ax = plt.subplots(figsize=(8, 4))
+
+        ax.plot(
+            driver_laps["LapNumber"],
+            driver_laps["LapTimeSeconds"],
+            marker="o"
+        )
+
+        ax.set_title(
+            f"{driver_names.get(selected_driver, selected_driver)} Lap Times"
+        )
+
+        ax.set_xlabel("Lap Number")
+        ax.set_ylabel("Lap Time (seconds)")
+
+        col1, col2, col3 = st.columns([1, 2, 1])
+
+        with col2:
+            st.pyplot(fig, use_container_width=True)
+    
+        # All of this above is driver selection and graph
+
+        st.subheader("Lap Breakdown")
+
+        all_driver_laps = laps[
+            laps["Driver"] == selected_driver
+        ].copy()
+
+        lap_breakdown = all_driver_laps[
+            [
+                "LapNumber",
+                "LapTime",
+                "Sector1Time",
+                "Sector2Time",
+                "Sector3Time",
+                "Compound",
+                "TyreLife",
+                "Stint",
+                "PitInTime",
+                "PitOutTime",
+                "TrackStatus"
+            ]
+        ].copy()
+
+        lap_breakdown["Event"] = lap_breakdown.apply(
+            get_lap_event,
+            axis=1
+        )
+
+        previous_compound = lap_breakdown["Compound"].shift(1)
+
+        tyre_changed = (
+            lap_breakdown["Compound"].notna()
+            & previous_compound.notna()
+            & (lap_breakdown["Compound"] != previous_compound)
+        )
+
+        lap_breakdown.loc[tyre_changed, "Event"] = (
+             lap_breakdown.loc[tyre_changed, "Event"]
+             + "  •  TYRE CHANGE: "
+             + previous_compound[tyre_changed]
+             + " → "
+             + lap_breakdown.loc[tyre_changed, "Compound"]
+        )
+
+        lap_breakdown["LapNumber"] = lap_breakdown["LapNumber"].astype(int)
+
+        lap_breakdown["LapTime"] = lap_breakdown["LapTime"].apply(format_lap_time)
+        lap_breakdown["Sector1Time"] = lap_breakdown["Sector1Time"].apply(format_sector_time)
+        lap_breakdown["Sector2Time"] = lap_breakdown["Sector2Time"].apply(format_sector_time)
+        lap_breakdown["Sector3Time"] = lap_breakdown["Sector3Time"].apply(format_sector_time)
+
+        lap_breakdown = lap_breakdown[
+            [
+                "LapNumber",
+                "LapTime",
+                "Sector1Time",
+                "Sector2Time",
+                "Sector3Time",
+                "Compound",
+                "TyreLife",
+                "Stint",
+                "Event"
+            ]
+        ]
+
+        lap_breakdown.columns = [
+            "Lap",
+            "Lap Time",
+            "Sector 1",
+            "Sector 2",
+            "Sector 3",
+            "Tyre",
+            "Tyre Life",
+            "Stint",
+            "Event"
+        ]
+
+        st.dataframe(
+            lap_breakdown,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Lap": st.column_config.NumberColumn(
+                    "Lap",
+                    width="small"
+                ),
+                "Tyre Life": st.column_config.NumberColumn(
+                    "Tyre Life",
+                    width="small"
+                ),
+                "Stint": st.column_config.NumberColumn(
+                    "Stint",
+                    width="small"
+                ),
+                "Event": st.column_config.TextColumn(
+                    "Event",
+                    width="large"
+                ),                
+            }
+        )
 
     with tyre_tab:
         st.info("Tyre and stint analysis coming next.")
