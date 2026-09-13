@@ -4,7 +4,7 @@ from urllib.parse import quote_plus
 from urllib.request import urlopen, Request
 import xml.etree.ElementTree as ET
 
-
+import pandas as pd
 import fastf1
 import streamlit as st
 import matplotlib.pyplot as plt

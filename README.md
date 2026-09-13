@@ -204,13 +204,6 @@ Areas I would like to continue developing include:
 - Circuit-specific analysis
 - Further performance and usability improvements
 
-## Screenshots
-
-Overview Page
-<img width="2466" height="1238" alt="image" src="https://github.com/user-attachments/assets/617802bf-f409-4ab5-81ed-d162e6138a10" />
-
-
-
 ## Author
 
 Ryan Brennan
