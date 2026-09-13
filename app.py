@@ -921,21 +921,26 @@ if grand_prix is not None and session_type is not None:
         min_time = driver_laps["LapTimeSeconds"].min()
         max_time = driver_laps["LapTimeSeconds"].max()
 
-        tick_start = int(min_time // 5) * 5
-        tick_end = int(max_time // 5 + 1) * 5
+        # Only format the Y-axis if valid lap times exist
+        if not driver_laps.empty and pd.notna(min_time) and pd.notna(max_time):
 
-        tick_values = list(range(tick_start, tick_end + 1, 5))
+            tick_start = int(min_time // 5) * 5
+            tick_end = int(max_time // 5 + 1) * 5
 
-        tick_labels = [
-            f"{int(seconds // 60)}:{int(seconds % 60):02d}"
-            for seconds in tick_values
-        ]
+            tick_values = list(
+                range(tick_start, tick_end + 1, 5)
+            )
 
-        fig.update_yaxes(
-            tickmode="array",
-            tickvals=tick_values,
-            ticktext=tick_labels
-        )
+            tick_labels = [
+                f"{int(seconds // 60)}:{int(seconds % 60):02d}"
+                for seconds in tick_values
+            ]
+
+            fig.update_yaxes(
+                tickmode="array",
+                tickvals=tick_values,
+                ticktext=tick_labels
+            )
 
         # All of this above is driver selection and graph
 
