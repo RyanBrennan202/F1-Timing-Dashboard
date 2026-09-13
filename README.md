@@ -204,6 +204,30 @@ Areas I would like to continue developing include:
 - Circuit-specific analysis
 - Further performance and usability improvements
 
+## Screenshots
+
+Overview Page
+<img width="2387" height="1185" alt="image" src="https://github.com/user-attachments/assets/42f7f0a7-3063-4265-a600-bed8b4bb97f1" />
+
+<img width="2467" height="1221" alt="image" src="https://github.com/user-attachments/assets/742ac913-da9c-42ac-ba8f-c751c58fadd6" />
+
+Individual Lap Analysis
+<img width="2460" height="1199" alt="image" src="https://github.com/user-attachments/assets/25c4ed08-95f7-4bbc-9ca9-4a04e1e60cf8" />
+
+<img width="2398" height="1179" alt="image" src="https://github.com/user-attachments/assets/de08b7ad-8f00-4f71-9515-68bd574bb9e0" />
+
+<img width="2417" height="1065" alt="image" src="https://github.com/user-attachments/assets/6d8d1dc0-6eff-4a4b-b597-ace461fd9fd3" />
+
+Tyres & Stints Page
+
+<img width="2380" height="1147" alt="image" src="https://github.com/user-attachments/assets/04a329d3-4da3-4732-8fc4-9a0388ca8217" />
+
+Driver Comparison Graph
+
+<img width="2425" height="1128" alt="image" src="https://github.com/user-attachments/assets/756e57d7-3b47-46dc-a748-e686725d084a" />
+
+
+
 ## Author
 
 Ryan Brennan
